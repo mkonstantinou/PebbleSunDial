@@ -1,0 +1,44 @@
+{
+    "author": "matt.konstantinou@gmail.com",
+    "dependencies": {},
+    "keywords": [],
+    "name": "sundial",
+    "pebble": {
+        "displayName": "sundial",
+        "enableMultiJS": true,
+        "messageKeys": [],
+        "projectType": "native",
+        "resources": {
+            "media": [
+                {
+                    "file": "images/moon.png",
+                    "name": "WEATHER_MOON",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                },
+                {
+                    "file": "images/cloudy.png",
+                    "name": "WEATHER_CLOUDY",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                },
+                {
+                    "file": "images/sun.png",
+                    "memoryFormat": "8Bit",
+                    "name": "WEATHER_SUN",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                }
+            ]
+        },
+        "sdkVersion": "3",
+        "targetPlatforms": [
+            "chalk"
+        ],
+        "uuid": "0f5bc674-2004-496d-9446-d0e20756297e",
+        "watchapp": {
+            "watchface": true
+        }
+    },
+    "version": "1.0.0"
+}
