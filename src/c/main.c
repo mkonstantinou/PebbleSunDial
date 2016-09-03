@@ -7,6 +7,9 @@
 
 static Window *s_main_window;
 
+static GBitmap *BITMAP_WEATHER_SUN;
+static GBitmap *BITMAP_WEATHER_MOON;
+
 static BitmapLayer *weatherLayer;
 static GBitmap *weatherBitmap;
 
@@ -23,10 +26,22 @@ GRect getCoordsByAngle(int angle, int w, int h, int circle_offset) {
   return GRect(newX, newY, w, h);
 }
 
+//TODO: Query for sunset and sunrise
+short isDaylight(struct tm *tick_time) {
+	if (tick_time->tm_hour > 8 || tick_time->tm_hour < 20) 
+		return true;
+	return false;
+}
 
 static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
   
   static char buffer[] = "99:99";
+  
+  if ( isDaylight(tick_time) && bitmap_layer_get_bitmap(timeOfDayLayer) != BITMAP_WEATHER_SUN ) {
+	bitmap_layer_set_bitmap(timeOfDayLayer, BITMAP_WEATHER_SUN);
+  } else if ( !isDaylight && bitmap_layer_get_bitmap(timeOfDayLayer) != BITMAP_WEATHER_MOON ) {
+	bitmap_layer_set_bitmap(timeOfDayLayer, BITMAP_WEATHER_MOON);
+  }
   
   //Get position of hour hand (sun/moon)
   int angle = TRIG_MAX_ANGLE * (((tick_time->tm_hour % 12) * 30 + tick_time->tm_min / 2)) / 360;
@@ -56,10 +71,12 @@ static void main_window_load(Window *window) {
   //Get parent layer
   Layer *window_layer = window_get_root_layer(window);
   
-  timeOfDayBitmap = gbitmap_create_with_resource(RESOURCE_ID_WEATHER_SUN);
+  BITMAP_WEATHER_SUN = gbitmap_create_with_resource(RESOURCE_ID_WEATHER_SUN);
+  BITMAP_WEATHER_MOON = gbitmap_create_with_resource(RESOURCE_ID_WEATHER_MOON);
+  
   timeOfDayLayer = bitmap_layer_create(GRect(80, 10, 21, 21));
   bitmap_layer_set_compositing_mode(timeOfDayLayer, GCompOpSet);
-  bitmap_layer_set_bitmap(timeOfDayLayer, timeOfDayBitmap);
+  bitmap_layer_set_bitmap(timeOfDayLayer, BITMAP_WEATHER_SUN);
   
   layer_add_child(window_layer, bitmap_layer_get_layer(timeOfDayLayer));
   
