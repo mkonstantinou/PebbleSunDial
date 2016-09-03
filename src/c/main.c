@@ -16,7 +16,65 @@ static GBitmap *weatherBitmap;
 static BitmapLayer *timeOfDayLayer;
 static GBitmap *timeOfDayBitmap;
 
-static TextLayer *logLabel;
+static TextLayer *timeLayer;
+static TextLayer *degreeLayer;
+
+static AppSync s_sync;
+static uint8_t s_sync_buffer[64];
+
+enum WeatherKey {
+  WEATHER_ICON_KEY = 0x0,
+  WEATHER_TEMPERATURE_KEY = 0x1,
+  WEATHER_CITY_KEY = 0x2
+};
+
+static const uint32_t WEATHER_ICONS[] = {
+  RESOURCE_ID_WEATHER_CLOUDY,
+  RESOURCE_ID_WEATHER_CLOUDY,
+  RESOURCE_ID_WEATHER_CLOUDY
+};
+
+static void sync_error_callback(DictionaryResult dict_error, AppMessageResult app_message_error, void *context) {
+  APP_LOG(APP_LOG_LEVEL_DEBUG, "App Message Sync Error: %d", app_message_error);
+}
+
+static void sync_tuple_changed_callback(const uint32_t key, const Tuple* new_tuple, const Tuple* old_tuple, void* context) {
+  switch (key) {
+    case WEATHER_ICON_KEY:
+      if (weatherBitmap) {
+        gbitmap_destroy(weatherBitmap);
+      }
+      
+      weatherBitmap = gbitmap_create_with_resource(WEATHER_ICONS[new_tuple->value->uint8]);
+      bitmap_layer_set_compositing_mode(weatherLayer, GCompOpSet);
+      bitmap_layer_set_bitmap(weatherLayer, weatherBitmap);
+      break;
+
+    case WEATHER_TEMPERATURE_KEY:
+      // App Sync keeps new_tuple in s_sync_buffer, so we may use it directly
+      text_layer_set_text(degreeLayer, new_tuple->value->cstring);
+      break;
+
+    case WEATHER_CITY_KEY:
+      //text_layer_set_text(s_city_layer, new_tuple->value->cstring);
+      break;
+  }
+}
+
+static void request_weather(void) {
+  DictionaryIterator *iter;
+  app_message_outbox_begin(&iter);
+  
+  if (!iter) {
+    return;
+  }
+  
+  int value = 1;
+  dict_write_int(iter, 1, &value, sizeof(int), true);
+  dict_write_end(iter);
+  
+  app_message_outbox_send();
+}
 
 GRect getCoordsByAngle(int angle, int w, int h, int circle_offset) {
   
@@ -28,7 +86,7 @@ GRect getCoordsByAngle(int angle, int w, int h, int circle_offset) {
 
 //TODO: Query for sunset and sunrise
 short isDaylight(struct tm *tick_time) {
-	if (tick_time->tm_hour > 8 || tick_time->tm_hour < 20) 
+	if (tick_time->tm_hour > 8 && tick_time->tm_hour < 20) 
 		return true;
 	return false;
 }
@@ -38,9 +96,9 @@ static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
   static char buffer[] = "99:99";
   
   if ( isDaylight(tick_time) && bitmap_layer_get_bitmap(timeOfDayLayer) != BITMAP_WEATHER_SUN ) {
-	bitmap_layer_set_bitmap(timeOfDayLayer, BITMAP_WEATHER_SUN);
-  } else if ( !isDaylight && bitmap_layer_get_bitmap(timeOfDayLayer) != BITMAP_WEATHER_MOON ) {
-	bitmap_layer_set_bitmap(timeOfDayLayer, BITMAP_WEATHER_MOON);
+	  bitmap_layer_set_bitmap(timeOfDayLayer, BITMAP_WEATHER_SUN);
+  } else if ( !isDaylight(tick_time) && bitmap_layer_get_bitmap(timeOfDayLayer) != BITMAP_WEATHER_MOON ) {
+	  bitmap_layer_set_bitmap(timeOfDayLayer, BITMAP_WEATHER_MOON);
   }
   
   //Get position of hour hand (sun/moon)
@@ -61,12 +119,13 @@ static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
     strftime(buffer, sizeof("99:99"), "%I:%M", tick_time);
   }
   
-  text_layer_set_text(logLabel, buffer);
+  text_layer_set_text(timeLayer, buffer);
   
 }
 
 static void main_window_load(Window *window) {
-  window_set_background_color(window, GColorBlack);
+  GColor backgroundColor = GColorBlack;
+  window_set_background_color(window, backgroundColor);
   
   //Get parent layer
   Layer *window_layer = window_get_root_layer(window);
@@ -88,13 +147,34 @@ static void main_window_load(Window *window) {
   
   layer_add_child(window_layer, bitmap_layer_get_layer(weatherLayer));
   
-  logLabel = text_layer_create(GRect(60, 80, 60, 20));
-  text_layer_set_text(logLabel, "9999");
-  text_layer_set_background_color(logLabel, GColorBlack);
-  text_layer_set_text_color(logLabel, GColorMelon);
-  text_layer_set_font(logLabel, fonts_get_system_font(FONT_KEY_LECO_20_BOLD_NUMBERS));
+  timeLayer = text_layer_create(GRect(60, 80, 60, 20));
+  text_layer_set_text(timeLayer, "9999");
+  text_layer_set_background_color(timeLayer, backgroundColor);
+  text_layer_set_text_color(timeLayer, GColorMelon);
+  text_layer_set_text_alignment(timeLayer, GTextAlignmentCenter);
+  text_layer_set_font(timeLayer, fonts_get_system_font(FONT_KEY_LECO_20_BOLD_NUMBERS));
   
-  layer_add_child(window_layer, text_layer_get_layer(logLabel));
+  degreeLayer = text_layer_create(GRect(70, 100, 40, 20));
+  text_layer_set_text(degreeLayer, "HOT");
+  text_layer_set_background_color(degreeLayer, backgroundColor);
+  text_layer_set_text_color(degreeLayer, GColorWhite);
+  text_layer_set_text_alignment(degreeLayer, GTextAlignmentCenter);
+  text_layer_set_font(timeLayer, fonts_get_system_font(FONT_KEY_LECO_20_BOLD_NUMBERS));
+  
+  layer_add_child(window_layer, text_layer_get_layer(timeLayer));
+  layer_add_child(window_layer, text_layer_get_layer(degreeLayer));
+  
+  Tuplet initial_values[] = {
+    TupletInteger(WEATHER_ICON_KEY, (uint8_t) 1),
+    TupletCString(WEATHER_TEMPERATURE_KEY, "1234\u00B0C"),
+    TupletCString(WEATHER_CITY_KEY, "St Pebblesburg"),
+  };
+  
+  app_sync_init(&s_sync, s_sync_buffer, sizeof(s_sync_buffer),
+      initial_values, ARRAY_LENGTH(initial_values),
+      sync_tuple_changed_callback, sync_error_callback, NULL);
+  
+  request_weather();
 }
 
 static void main_window_unload(Window *window) {
@@ -105,6 +185,11 @@ static void main_window_unload(Window *window) {
   
   bitmap_layer_destroy(weatherLayer);
   gbitmap_destroy(weatherBitmap);
+  gbitmap_destroy(BITMAP_WEATHER_SUN);
+  gbitmap_destroy(BITMAP_WEATHER_MOON);
+  
+  text_layer_destroy(degreeLayer);
+  text_layer_destroy(timeLayer);
 }
 
 static void init() {

@@ -6,10 +6,21 @@
     "pebble": {
         "displayName": "sundial",
         "enableMultiJS": true,
-        "messageKeys": [],
+        "messageKeys": {
+            "WEATHER_CITY_KEY": 2,
+            "WEATHER_ICON_KEY": 0,
+            "WEATHER_TEMPERATURE_KEY": 1
+        },
         "projectType": "native",
         "resources": {
             "media": [
+                {
+                    "file": "images/sun.png",
+                    "memoryFormat": "8Bit",
+                    "name": "WEATHER_SUN",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                },
                 {
                     "file": "images/moon.png",
                     "name": "WEATHER_MOON",
@@ -19,13 +30,6 @@
                 {
                     "file": "images/cloudy.png",
                     "name": "WEATHER_CLOUDY",
-                    "targetPlatforms": null,
-                    "type": "bitmap"
-                },
-                {
-                    "file": "images/sun.png",
-                    "memoryFormat": "8Bit",
-                    "name": "WEATHER_SUN",
                     "targetPlatforms": null,
                     "type": "bitmap"
                 }
