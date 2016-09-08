@@ -26,13 +26,20 @@ function fetchWeather(lat, long) {
         var temperature = Math.round(response.main.temp);
         var icon = iconFromWeatherId(response.weather[0].id);
         var city = response.name;
-        console.log('temp: ' + temperature);
-        console.log('type: ' + icon);
-        console.log('city: ' + city);
+        var sunrise = response.sys.sunrise;
+        var sunset = response.sys.sunset;
+        console.log('Sunrise: ' + sunrise);
+        console.log('Sunset: ' + sunset);
         Pebble.sendAppMessage({
           'WEATHER_ICON_KEY': icon,
-          'WEATHER_TEMPERATURE_KEY': temperature + '\xB0C',
-          'WEATHER_CITY_KEY': city
+          'WEATHER_TEMPERATURE_KEY': temperature + "\u00B0",
+          'WEATHER_CITY_KEY': city,
+          'WEATHER_SUNRISE_KEY': sunrise,
+          'WEATHER_SUNSET_KEY': sunset
+        }, function(e) {
+          console.log('Send successful!');
+        }, function(e) {
+          console.log('Send FAILED');
         });
 			} else {
         console.log('Error');
