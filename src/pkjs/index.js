@@ -12,6 +12,12 @@ function iconFromWeatherId(weatherId) {
 	}
 }
 
+function timeFromUnix(unixtime) {
+  var date = new Date(unixtime * 1000);
+  var timestr = date.toLocaleTimeString();
+  return timestr;
+}
+
 function fetchWeather(lat, long) {
 	var req = new XMLHttpRequest();
 	
@@ -25,15 +31,15 @@ function fetchWeather(lat, long) {
         var response = JSON.parse(req.responseText);
         var temperature = Math.round(response.main.temp);
         var icon = iconFromWeatherId(response.weather[0].id);
-        var city = response.name;
-        var sunrise = response.sys.sunrise;
-        var sunset = response.sys.sunset;
-        console.log('Sunrise: ' + sunrise);
-        console.log('Sunset: ' + sunset);
+        //var city = response.name;
+        var sunrise = timeFromUnix(response.sys.sunrise);
+        var sunset = timeFromUnix(response.sys.sunset);
+        console.log('JS Sunrise: ' + sunrise);
+        console.log('JS Sunset: ' + sunset);
         Pebble.sendAppMessage({
           'WEATHER_ICON_KEY': icon,
           'WEATHER_TEMPERATURE_KEY': temperature + "\u00B0",
-          'WEATHER_CITY_KEY': city,
+          //'WEATHER_CITY_KEY': city,
           'WEATHER_SUNRISE_KEY': sunrise,
           'WEATHER_SUNSET_KEY': sunset
         }, function(e) {

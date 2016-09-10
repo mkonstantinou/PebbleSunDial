@@ -1,8 +1,11 @@
 #include <pebble.h>
-#include "main.h"
 
 #ifndef PI
 #define PI (3.141592)
+#endif
+
+#ifndef NULL
+#define NULL (0)
 #endif
 
 static Window *s_main_window;
@@ -22,12 +25,17 @@ static TextLayer *degreeLayer;
 static AppSync s_sync;
 static uint8_t s_sync_buffer[64];
 
+const char* time_format = "%H:%M:%S";
+
+struct tm* sunrise_local;
+struct tm* sunset_local;
+
 enum WeatherKey {
   WEATHER_ICON_KEY = 0x0,
   WEATHER_TEMPERATURE_KEY = 0x1,
-  WEATHER_CITY_KEY = 0x2,
-  WEATHER_SUNRISE_KEY = 0X3,
-  WEATHER_SUNSET_KEY = 0x4
+  //WEATHER_CITY_KEY = 0x2,
+  WEATHER_SUNRISE_KEY = 0X2,
+  WEATHER_SUNSET_KEY = 0x3
 };
 
 static const uint32_t WEATHER_ICONS[] = {
@@ -36,16 +44,55 @@ static const uint32_t WEATHER_ICONS[] = {
   RESOURCE_ID_WEATHER_CLOUDY
 };
 
+static int stringToTM(const char* str, struct tm* time) {
+  unsigned int i;
+  int digit;
+  int timeBuffer = 0;
+  int formatCounter = 0;
+  const int asciiDiff = 48;
+  
+  if (str == NULL || time == NULL || strlen(str) < sizeof(time_format)) 
+    return -1;
+  
+  for (i = 0; i < strlen(str); i++) {
+    if (str[i] == ':') {
+      timeBuffer /= 10;
+      
+      switch (formatCounter) {
+        case 0:
+          time->tm_hour = timeBuffer;
+          break;
+        case 1:
+          time->tm_min = timeBuffer;
+          break;
+      }
+      
+      timeBuffer = 0;
+      formatCounter++;
+      
+    } else {
+      digit = str[i] - asciiDiff;
+      timeBuffer += digit;
+      timeBuffer *= 10;
+    }
+  }
+  
+  timeBuffer /= 10;
+  time->tm_sec = timeBuffer;
+  return i;
+}
+
 static void sync_error_callback(DictionaryResult dict_error, AppMessageResult app_message_error, void *context) {
   APP_LOG(APP_LOG_LEVEL_DEBUG, "App Message Sync Error: %d", app_message_error);
 }
 
 static void sync_tuple_changed_callback(const uint32_t key, const Tuple* new_tuple, const Tuple* old_tuple, void* context) {
   APP_LOG(APP_LOG_LEVEL_DEBUG, "sync_tuple_changed_callback");
+  const char* sun_string;
+  
   switch (key) {
     case WEATHER_TEMPERATURE_KEY:
       // App Sync keeps new_tuple in s_sync_buffer, so we may use it directly
-      APP_LOG(APP_LOG_LEVEL_DEBUG, "new_tuple->value %s", new_tuple->value->cstring);
       text_layer_set_text(degreeLayer, new_tuple->value->cstring);
       break;
     
@@ -58,15 +105,25 @@ static void sync_tuple_changed_callback(const uint32_t key, const Tuple* new_tup
       bitmap_layer_set_compositing_mode(weatherLayer, GCompOpSet);
       bitmap_layer_set_bitmap(weatherLayer, weatherBitmap);
       break;
-
+    /*
     case WEATHER_CITY_KEY:
       //text_layer_set_text(degreeLayer, new_tuple->value->cstring);
       break;
-    
+    */
     case WEATHER_SUNRISE_KEY:
+      sun_string = malloc(sizeof(time_format));
+      sun_string = &(new_tuple->value->cstring[0]);
+      stringToTM(sun_string, sunrise_local);
+      APP_LOG(APP_LOG_LEVEL_DEBUG, "C sunrise: %s", (char*)sun_string);
+      memory_cache_flush((char*)sun_string, sizeof(sun_string));
       break;
     
     case WEATHER_SUNSET_KEY:
+      sun_string = malloc(sizeof(time_format));
+      sun_string = &(new_tuple->value->cstring[0]);
+      stringToTM(sun_string, sunset_local);
+      APP_LOG(APP_LOG_LEVEL_DEBUG, "C sunset: %s", (char*)sun_string);
+      memory_cache_flush((char*)sun_string, sizeof(sun_string));
       break;
   }
 }
@@ -94,17 +151,32 @@ GRect getCoordsByAngle(int angle, int w, int h, int circle_offset) {
   return GRect(newX, newY, w, h);
 }
 
-//TODO: Query for sunset and sunrise
 short isDaylight(struct tm *tick_time) {
-	if (tick_time->tm_hour > 8 && tick_time->tm_hour < 20) 
-		return true;
+  //APP_LOG(APP_LOG_LEVEL_DEBUG, "isDaylight: %i >= %i", tick_time->tm_hour, sunrise_local->tm_hour);
+  //APP_LOG(APP_LOG_LEVEL_DEBUG, "isDaylight: %i <= %i", tick_time->tm_hour, sunset_local->tm_hour);
+  
+  // If hour hour between hours of sunrise and sunset
+	if (tick_time->tm_hour >= sunrise_local->tm_hour && tick_time->tm_hour <= sunset_local->tm_hour) {
+    if (tick_time->tm_hour == sunrise_local->tm_hour && tick_time->tm_min >= sunrise_local->tm_min) {
+      // If hour is same but minute is greater than sunrise
+      return true;
+    } else if (tick_time->tm_hour == sunset_local->tm_hour && tick_time->tm_min <= sunset_local->tm_min) {
+      // If hour is same but minute is less than sunset
+      return true;
+    } else if (tick_time->tm_hour != sunrise_local->tm_hour && tick_time->tm_hour != sunset_local->tm_hour) {
+      // If hours are different
+      return true;
+    }
+  }
+  
 	return false;
 }
 
 static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
-  APP_LOG(APP_LOG_LEVEL_DEBUG, "Handling tick");
+  
   static char buffer[] = "99:99";
   
+  //update sun/moon
   if ( isDaylight(tick_time) && bitmap_layer_get_bitmap(timeOfDayLayer) != BITMAP_WEATHER_SUN ) {
 	  bitmap_layer_set_bitmap(timeOfDayLayer, BITMAP_WEATHER_SUN);
   } else if ( !isDaylight(tick_time) && bitmap_layer_get_bitmap(timeOfDayLayer) != BITMAP_WEATHER_MOON ) {
@@ -174,10 +246,22 @@ static void main_window_load(Window *window) {
   layer_add_child(window_layer, text_layer_get_layer(timeLayer));
   layer_add_child(window_layer, text_layer_get_layer(degreeLayer));
   
+  sunrise_local = malloc(sizeof(struct tm));
+  sunset_local = malloc(sizeof(struct tm));
+  sunrise_local->tm_hour = 8;
+  sunrise_local->tm_min = 0;
+  sunrise_local->tm_sec = 0;
+  
+  sunset_local->tm_hour = 20;
+  sunset_local->tm_min = 0;
+  sunset_local->tm_sec = 0;
+  
   Tuplet initial_values[] = {
     TupletInteger(WEATHER_ICON_KEY, (uint8_t) 0),
     TupletCString(WEATHER_TEMPERATURE_KEY, "---\u00B0"),
-    TupletCString(WEATHER_CITY_KEY, "St Pebblesburg"),
+    //TupletCString(WEATHER_CITY_KEY, "St Pebblesburg"),
+    TupletCString(WEATHER_SUNRISE_KEY, "08:00:00"),
+    TupletCString(WEATHER_SUNSET_KEY, "20:00:00")
   };
   
   app_sync_init(&s_sync, s_sync_buffer, sizeof(s_sync_buffer),
