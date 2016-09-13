@@ -1,15 +1,19 @@
 var myAPIKey = 'cf3783bad968bcef693601e4ce1e250a';
 
 function iconFromWeatherId(weatherId) {
-	if (weatherId < 600) {
-		return 2;
-	} else if (weatherId < 700) {
-		return 3;
-	} else if (weatherId < 800) {
-		return 1;
-	} else {
-		return 0;
-	}
+  if (weatherId < 300) {           //Thunderstorm
+    return 0;
+  } else if (weatherId < 600) {    // Rain
+    return 1;
+  } else if (weatherId < 700) {    // Snow
+    return 2;
+  } else if (weatherId == 800) {   // Clear
+    return 3;
+  } else if (weatherId < 900) {    // Clouds
+    return 4;
+  } else {
+    return 3;
+  }
 }
 
 function timeFromUnix(unixtime) {
@@ -31,7 +35,6 @@ function fetchWeather(lat, long) {
         var response = JSON.parse(req.responseText);
         var temperature = Math.round(response.main.temp);
         var icon = iconFromWeatherId(response.weather[0].id);
-        //var city = response.name;
         var sunrise = timeFromUnix(response.sys.sunrise);
         var sunset = timeFromUnix(response.sys.sunset);
         console.log('JS Sunrise: ' + sunrise);

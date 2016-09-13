@@ -22,26 +22,28 @@ static GBitmap *timeOfDayBitmap;
 static TextLayer *timeLayer;
 static TextLayer *degreeLayer;
 
-static AppSync s_sync;
-static uint8_t s_sync_buffer[64];
-
 const char* time_format = "%H:%M:%S";
 
 struct tm* sunrise_local;
 struct tm* sunset_local;
 
+int weather_update_interval = 15;
+int weather_update_interval_counter;
+
 enum WeatherKey {
   WEATHER_ICON_KEY = 0x0,
   WEATHER_TEMPERATURE_KEY = 0x1,
-  //WEATHER_CITY_KEY = 0x2,
   WEATHER_SUNRISE_KEY = 0X2,
   WEATHER_SUNSET_KEY = 0x3
 };
 
 static const uint32_t WEATHER_ICONS[] = {
-  RESOURCE_ID_WEATHER_CLOUDY,
-  RESOURCE_ID_WEATHER_CLOUDY,
-  RESOURCE_ID_WEATHER_CLOUDY
+  RESOURCE_ID_WEATHER_THUNDER,
+  RESOURCE_ID_WEATHER_RAIN,
+  RESOURCE_ID_WEATHER_SNOW,
+  RESOURCE_ID_WEATHER_CLEAR,
+  RESOURCE_ID_WEATHER_CLOUDY  
+  
 };
 
 static int stringToTM(const char* str, struct tm* time) {
@@ -69,7 +71,8 @@ static int stringToTM(const char* str, struct tm* time) {
       
       timeBuffer = 0;
       formatCounter++;
-      
+    } else if (str[i] == 'P') {
+      time->tm_hour += 12;
     } else {
       digit = str[i] - asciiDiff;
       timeBuffer += digit;
@@ -80,52 +83,6 @@ static int stringToTM(const char* str, struct tm* time) {
   timeBuffer /= 10;
   time->tm_sec = timeBuffer;
   return i;
-}
-
-static void sync_error_callback(DictionaryResult dict_error, AppMessageResult app_message_error, void *context) {
-  APP_LOG(APP_LOG_LEVEL_DEBUG, "App Message Sync Error: %d", app_message_error);
-}
-
-static void sync_tuple_changed_callback(const uint32_t key, const Tuple* new_tuple, const Tuple* old_tuple, void* context) {
-  APP_LOG(APP_LOG_LEVEL_DEBUG, "sync_tuple_changed_callback");
-  const char* sun_string;
-  
-  switch (key) {
-    case WEATHER_TEMPERATURE_KEY:
-      // App Sync keeps new_tuple in s_sync_buffer, so we may use it directly
-      text_layer_set_text(degreeLayer, new_tuple->value->cstring);
-      break;
-    
-    case WEATHER_ICON_KEY:
-      if (weatherBitmap) {
-        gbitmap_destroy(weatherBitmap);
-      }
-      
-      weatherBitmap = gbitmap_create_with_resource(WEATHER_ICONS[new_tuple->value->uint8]);
-      bitmap_layer_set_compositing_mode(weatherLayer, GCompOpSet);
-      bitmap_layer_set_bitmap(weatherLayer, weatherBitmap);
-      break;
-    /*
-    case WEATHER_CITY_KEY:
-      //text_layer_set_text(degreeLayer, new_tuple->value->cstring);
-      break;
-    */
-    case WEATHER_SUNRISE_KEY:
-      sun_string = malloc(sizeof(time_format));
-      sun_string = &(new_tuple->value->cstring[0]);
-      stringToTM(sun_string, sunrise_local);
-      APP_LOG(APP_LOG_LEVEL_DEBUG, "C sunrise: %s", (char*)sun_string);
-      memory_cache_flush((char*)sun_string, sizeof(sun_string));
-      break;
-    
-    case WEATHER_SUNSET_KEY:
-      sun_string = malloc(sizeof(time_format));
-      sun_string = &(new_tuple->value->cstring[0]);
-      stringToTM(sun_string, sunset_local);
-      APP_LOG(APP_LOG_LEVEL_DEBUG, "C sunset: %s", (char*)sun_string);
-      memory_cache_flush((char*)sun_string, sizeof(sun_string));
-      break;
-  }
 }
 
 static void request_weather(void) {
@@ -143,6 +100,75 @@ static void request_weather(void) {
   app_message_outbox_send();
 }
 
+
+static void app_inbox_received_handler(DictionaryIterator *iter, void *context) {
+  
+  // ------------------------SETTINGS------------------------ //
+  
+  // Read color preferences
+  Tuple *bg_color_tuple = dict_find(iter, MESSAGE_KEY_BACKGROUND_COLOR);
+  if(bg_color_tuple) {
+    GColor bg_color = GColorFromHEX(bg_color_tuple->value->int32);
+    window_set_background_color(s_main_window, bg_color);
+  }
+  
+  // Weather update preferences
+  Tuple *weather_interval_tuple = dict_find(iter, MESSAGE_KEY_WEATHER_INTERVAL);
+  if (weather_interval_tuple) {
+    weather_update_interval = weather_interval_tuple->value->uint32;
+    request_weather();
+  }
+  // ------------------------WEATHER------------------------ //
+  
+  // Read temperature
+  Tuple *weather_temp_tuple = dict_find(iter, MESSAGE_KEY_WEATHER_TEMPERATURE_KEY);
+  if (weather_temp_tuple) {
+    text_layer_set_text(degreeLayer, weather_temp_tuple->value->cstring);
+  }
+  
+  // Read weather icon
+  Tuple *weather_icon_tuple = dict_find(iter, MESSAGE_KEY_WEATHER_ICON_KEY);
+  if (weather_icon_tuple) {
+    if (weatherBitmap) {
+        gbitmap_destroy(weatherBitmap);
+      }
+      
+      weatherBitmap = gbitmap_create_with_resource(WEATHER_ICONS[weather_icon_tuple->value->uint8]);
+      bitmap_layer_set_compositing_mode(weatherLayer, GCompOpSet);
+      bitmap_layer_set_bitmap(weatherLayer, weatherBitmap);
+  }
+  
+  // Read sunrise time
+  Tuple *weather_sunrise_tuple = dict_find(iter, MESSAGE_KEY_WEATHER_SUNRISE_KEY);
+  if (weather_sunrise_tuple) {
+    const char* sun_string = malloc(sizeof(time_format));
+    sun_string = &(weather_sunrise_tuple->value->cstring[0]);
+    stringToTM(sun_string, sunrise_local);
+    memory_cache_flush((char*)sun_string, sizeof(sun_string));
+  }
+  
+  // Read sunset time
+  Tuple *weather_sunset_tuple = dict_find(iter, MESSAGE_KEY_WEATHER_SUNSET_KEY);
+  if (weather_sunset_tuple) {
+    const char* sun_string = malloc(sizeof(time_format));
+    sun_string = &(weather_sunset_tuple->value->cstring[0]);
+    APP_LOG(APP_LOG_LEVEL_DEBUG, "MESSAGE RECEIVED - Sunset time: %s", sun_string);
+    stringToTM(sun_string, sunset_local);
+    
+    memory_cache_flush((char*)sun_string, sizeof(sun_string));
+  }
+  
+  // Read boolean preferences
+  /*
+  Tuple *second_tick_t = dict_find(iter, MESSAGE_KEY_SecondTick);
+  if(second_tick_t) {
+    bool second_ticks = second_tick_t->value->int32 == 1;
+  }
+  */
+  // Read Weather preference
+
+}
+
 GRect getCoordsByAngle(int angle, int w, int h, int circle_offset) {
   
   int newY = (-cos_lookup(angle) * (90 - circle_offset) / TRIG_MAX_RATIO) + 80 ;
@@ -152,18 +178,19 @@ GRect getCoordsByAngle(int angle, int w, int h, int circle_offset) {
 }
 
 short isDaylight(struct tm *tick_time) {
-  //APP_LOG(APP_LOG_LEVEL_DEBUG, "isDaylight: %i >= %i", tick_time->tm_hour, sunrise_local->tm_hour);
-  //APP_LOG(APP_LOG_LEVEL_DEBUG, "isDaylight: %i <= %i", tick_time->tm_hour, sunset_local->tm_hour);
-  
   // If hour hour between hours of sunrise and sunset
+  APP_LOG(APP_LOG_LEVEL_DEBUG, "Current time: %i:%i", tick_time->tm_hour, tick_time->tm_min);
+  APP_LOG(APP_LOG_LEVEL_DEBUG, "Sunrise time: %i:%i", sunrise_local->tm_hour, sunrise_local->tm_min);
+  APP_LOG(APP_LOG_LEVEL_DEBUG, "Sunset time: %i:%i", sunset_local->tm_hour, sunset_local->tm_min);
+  
 	if (tick_time->tm_hour >= sunrise_local->tm_hour && tick_time->tm_hour <= sunset_local->tm_hour) {
     if (tick_time->tm_hour == sunrise_local->tm_hour && tick_time->tm_min >= sunrise_local->tm_min) {
       // If hour is same but minute is greater than sunrise
       return true;
-    } else if (tick_time->tm_hour == sunset_local->tm_hour && tick_time->tm_min <= sunset_local->tm_min) {
+    } else if (tick_time->tm_hour == sunset_local->tm_hour && tick_time->tm_min < sunset_local->tm_min) {
       // If hour is same but minute is less than sunset
       return true;
-    } else if (tick_time->tm_hour != sunrise_local->tm_hour && tick_time->tm_hour != sunset_local->tm_hour) {
+    } else if (tick_time->tm_hour > sunrise_local->tm_hour && tick_time->tm_hour < sunset_local->tm_hour) {
       // If hours are different
       return true;
     }
@@ -173,6 +200,11 @@ short isDaylight(struct tm *tick_time) {
 }
 
 static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
+  weather_update_interval_counter += 1;
+  if (weather_update_interval_counter >= weather_update_interval) {
+    request_weather();
+    weather_update_interval_counter = 0;
+  }
   
   static char buffer[] = "99:99";
   
@@ -264,11 +296,11 @@ static void main_window_load(Window *window) {
     TupletCString(WEATHER_SUNSET_KEY, "20:00:00")
   };
   
-  app_sync_init(&s_sync, s_sync_buffer, sizeof(s_sync_buffer),
-      initial_values, ARRAY_LENGTH(initial_values),
-      sync_tuple_changed_callback, sync_error_callback, NULL);
-  
+  //Register message inbox handler
+  app_message_register_inbox_received(app_inbox_received_handler);
+  //TODO: Appropriate message size
   app_message_open(app_message_inbox_size_maximum(), app_message_outbox_size_maximum());
+  
   request_weather();
 }
 

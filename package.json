@@ -1,20 +1,52 @@
 {
     "author": "matt.konstantinou@gmail.com",
-    "dependencies": {},
+    "dependencies": {
+        "pebble-clay": "^1.0.2"
+    },
     "keywords": [],
     "name": "sundial",
     "pebble": {
+        "capabilities": [
+            "configurable"
+        ],
         "displayName": "sundial",
         "enableMultiJS": true,
-        "messageKeys": {
-            "WEATHER_ICON_KEY": 0,
-            "WEATHER_SUNRISE_KEY": 2,
-            "WEATHER_SUNSET_KEY": 3,
-            "WEATHER_TEMPERATURE_KEY": 1
-        },
+        "messageKeys": [
+            "WEATHER_ICON_KEY",
+            "WEATHER_TEMPERATURE_KEY",
+            "WEATHER_SUNRISE_KEY",
+            "WEATHER_SUNSET_KEY",
+            "BACKGROUND_COLOR",
+            "CLOCK_COLOR",
+            "WEATHER_INTERVAL"
+        ],
         "projectType": "native",
         "resources": {
             "media": [
+                {
+                    "file": "images/clear.png",
+                    "name": "WEATHER_CLEAR",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                },
+                {
+                    "file": "images/snow.png",
+                    "name": "WEATHER_SNOW",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                },
+                {
+                    "file": "images/thunder",
+                    "name": "WEATHER_THUNDER",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                },
+                {
+                    "file": "images/rain.png",
+                    "name": "WEATHER_RAIN",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                },
                 {
                     "file": "images/sun.png",
                     "memoryFormat": "8Bit",
