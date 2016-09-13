@@ -1,4 +1,7 @@
 var myAPIKey = 'cf3783bad968bcef693601e4ce1e250a';
+var Clay = require('pebble-clay');
+var clayConfig = require('./config');
+var clay = new Clay(clayConfig);
 
 function iconFromWeatherId(weatherId) {
   if (weatherId < 300) {           //Thunderstorm

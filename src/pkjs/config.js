@@ -55,6 +55,10 @@ module.exports = [
         "value": 60
       }
     ]
+  },
+  {
+    "type": "submit",
+    "defaultValue": "Save Settings"
   }
   
 ];

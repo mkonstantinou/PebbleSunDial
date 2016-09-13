@@ -43,9 +43,13 @@ static const uint32_t WEATHER_ICONS[] = {
   RESOURCE_ID_WEATHER_SNOW,
   RESOURCE_ID_WEATHER_CLEAR,
   RESOURCE_ID_WEATHER_CLOUDY  
-  
 };
 
+/* 
+ * stringToTM
+ * Pre: Takes string and time structure
+ * Post: converts time string to struct tm*
+ */
 static int stringToTM(const char* str, struct tm* time) {
   unsigned int i;
   int digit;
@@ -71,7 +75,7 @@ static int stringToTM(const char* str, struct tm* time) {
       
       timeBuffer = 0;
       formatCounter++;
-    } else if (str[i] == 'P') {
+    } else if (str[i] == 'P') {    // Handle 'PM' at end of string
       time->tm_hour += 12;
     } else {
       digit = str[i] - asciiDiff;
@@ -85,6 +89,11 @@ static int stringToTM(const char* str, struct tm* time) {
   return i;
 }
 
+/* 
+ * request_weather
+ * Pre: Takes nothing
+ * Post: Send outbound message to js to request weather
+ */
 static void request_weather(void) {
   DictionaryIterator *iter;
   app_message_outbox_begin(&iter);
@@ -100,7 +109,22 @@ static void request_weather(void) {
   app_message_outbox_send();
 }
 
+/* 
+ * layers_set_background_color
+ * Pre: Takes GColor
+ * Post: applies background color to window and all text layers
+ */
+static void layers_set_background_color(GColor color) {
+  window_set_background_color(s_main_window, color);
+  text_layer_set_background_color(timeLayer, color);
+  text_layer_set_background_color(degreeLayer, color);
+}
 
+/* 
+ * app_inbox_received_handler
+ * Pre: Takes DictionaryIterator and context reference
+ * Post: Update settings and variables based js messages (config/weather)
+ */
 static void app_inbox_received_handler(DictionaryIterator *iter, void *context) {
   
   // ------------------------SETTINGS------------------------ //
@@ -109,7 +133,13 @@ static void app_inbox_received_handler(DictionaryIterator *iter, void *context) 
   Tuple *bg_color_tuple = dict_find(iter, MESSAGE_KEY_BACKGROUND_COLOR);
   if(bg_color_tuple) {
     GColor bg_color = GColorFromHEX(bg_color_tuple->value->int32);
-    window_set_background_color(s_main_window, bg_color);
+    layers_set_background_color(bg_color);
+  }
+  
+  Tuple *clock_color_tuple = dict_find(iter, MESSAGE_KEY_CLOCK_COLOR);
+  if(clock_color_tuple) {
+    GColor clock_color = GColorFromHEX(clock_color_tuple->value->int32);
+    text_layer_set_text_color(timeLayer, clock_color);
   }
   
   // Weather update preferences
@@ -152,9 +182,7 @@ static void app_inbox_received_handler(DictionaryIterator *iter, void *context) 
   if (weather_sunset_tuple) {
     const char* sun_string = malloc(sizeof(time_format));
     sun_string = &(weather_sunset_tuple->value->cstring[0]);
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "MESSAGE RECEIVED - Sunset time: %s", sun_string);
     stringToTM(sun_string, sunset_local);
-    
     memory_cache_flush((char*)sun_string, sizeof(sun_string));
   }
   
@@ -169,6 +197,11 @@ static void app_inbox_received_handler(DictionaryIterator *iter, void *context) 
 
 }
 
+/* 
+ * getCoordsByAngle
+ * Pre: angle in radians, width of icon, height of icon, offset from circle edge
+ * Post: Returns GRect with x and y based on angle, and width and height from paramters
+ */
 GRect getCoordsByAngle(int angle, int w, int h, int circle_offset) {
   
   int newY = (-cos_lookup(angle) * (90 - circle_offset) / TRIG_MAX_RATIO) + 80 ;
@@ -177,6 +210,11 @@ GRect getCoordsByAngle(int angle, int w, int h, int circle_offset) {
   return GRect(newX, newY, w, h);
 }
 
+/* 
+ * isDaylight
+ * Pre: Takes reference to time struct
+ * Post: returns 1 if the sun is out, 0 otherwise
+ */
 short isDaylight(struct tm *tick_time) {
   // If hour hour between hours of sunrise and sunset
   APP_LOG(APP_LOG_LEVEL_DEBUG, "Current time: %i:%i", tick_time->tm_hour, tick_time->tm_min);
@@ -199,6 +237,11 @@ short isDaylight(struct tm *tick_time) {
 	return false;
 }
 
+/* 
+ * tick_handler
+ * Pre: Takes reference to time struct and units changed since last tick
+ * Post: Update weather, text, and rotating icons
+ */
 static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
   weather_update_interval_counter += 1;
   if (weather_update_interval_counter >= weather_update_interval) {
@@ -208,12 +251,17 @@ static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
   
   static char buffer[] = "99:99";
   
-  //update sun/moon
-  if ( isDaylight(tick_time) && bitmap_layer_get_bitmap(timeOfDayLayer) != BITMAP_WEATHER_SUN ) {
-	  bitmap_layer_set_bitmap(timeOfDayLayer, BITMAP_WEATHER_SUN);
-  } else if ( !isDaylight(tick_time) && bitmap_layer_get_bitmap(timeOfDayLayer) != BITMAP_WEATHER_MOON ) {
-	  bitmap_layer_set_bitmap(timeOfDayLayer, BITMAP_WEATHER_MOON);
+  //Update sun/moon depending on time
+  if ( isDaylight(tick_time)) {
+    if ( bitmap_layer_get_bitmap(timeOfDayLayer) != BITMAP_WEATHER_SUN ) {
+      bitmap_layer_set_bitmap(timeOfDayLayer, BITMAP_WEATHER_SUN);
+    }
+  } else {
+    if ( bitmap_layer_get_bitmap(timeOfDayLayer) != BITMAP_WEATHER_MOON ) {
+      bitmap_layer_set_bitmap(timeOfDayLayer, BITMAP_WEATHER_MOON);
+    }
   }
+  
   
   //Get position of hour hand (sun/moon)
   int angle = TRIG_MAX_ANGLE * (((tick_time->tm_hour % 12) * 30 + tick_time->tm_min / 2)) / 360;
@@ -237,6 +285,11 @@ static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
   
 }
 
+/* 
+ * main_window_load
+ * Pre: Takes reference to main window
+ * Post: Initialize all assets
+ */
 static void main_window_load(Window *window) {
   GColor backgroundColor = GColorBlack;
   window_set_background_color(window, backgroundColor);
@@ -304,6 +357,11 @@ static void main_window_load(Window *window) {
   request_weather();
 }
 
+/* 
+ * main_window_unload
+ * Pre: Takes reference to main windo
+ * Post: Frees all memory
+ */
 static void main_window_unload(Window *window) {
   window_stack_remove(s_main_window, true);
   
@@ -319,6 +377,11 @@ static void main_window_unload(Window *window) {
   text_layer_destroy(timeLayer);
 }
 
+/* 
+ * init
+ * Pre: Takes nothing
+ * Post: Initialize window, register window loader and unloader, subscribe to time service
+ */
 static void init() {
   
   // Create main Window element and assign to pointer
@@ -339,12 +402,21 @@ static void init() {
   
 }
 
+/* 
+ * deinit
+ * Pre: Takes nothing
+ * Post: Destroys all windows
+ */
 static void deinit() {
   // Destroy Window
   window_destroy(s_main_window);
 }
 
-
+/* 
+ * main
+ * Pre: Takes nothing; called on start
+ * Post: Main loop
+ */
 int main(void) {
   init();
   app_event_loop();
