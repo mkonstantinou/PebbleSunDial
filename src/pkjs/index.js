@@ -97,5 +97,5 @@ Pebble.addEventListener('appmessage', function (e) {
 Pebble.addEventListener('webviewclosed', function (e) {
   console.log('webview closed');
   console.log(e.type);
-  console.log(e.response);
+  console.log("Response: " + e.response);
 });

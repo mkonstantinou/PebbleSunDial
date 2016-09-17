@@ -29,15 +29,30 @@ module.exports = [
     ]
   },
   {
+    "type": "heading",
+    "defaultValue": "Weather Settings"
+  },
+  {
+    "type": "radiogroup",
+    "messageKey": "WEATHER_PROVIDER",
+    "label": "Weather Provider",
+    "options": [
+      { 
+        "label": "OpenWeatherMap", 
+        "value": 0 
+      },
+      { 
+        "label": "Yahoo Weather", 
+        "value": 1 
+      }
+    ] 
+  },
+  {
     "type": "select",
     "messageKey": "WEATHER_INTERVAL",
     "defaultValue": 15,
     "label": "Weather Update Interval",
     "options": [
-      { 
-        "label": "", 
-        "value": 15 
-      },
       { 
         "label": "5 minutes",
         "value": 5

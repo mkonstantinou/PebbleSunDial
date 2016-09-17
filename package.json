@@ -18,7 +18,9 @@
             "WEATHER_SUNSET_KEY",
             "BACKGROUND_COLOR",
             "CLOCK_COLOR",
-            "WEATHER_INTERVAL"
+            "WEATHER_INTERVAL",
+            "WEATHER_PROVIDER",
+            "SETTINGS_KEY"
         ],
         "projectType": "native",
         "resources": {

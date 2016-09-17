@@ -1,4 +1,5 @@
 #include <pebble.h>
+#include "src/c/Settings.h"
 
 #ifndef PI
 #define PI (3.141592)
@@ -21,6 +22,7 @@ static GBitmap *timeOfDayBitmap;
 
 static TextLayer *timeLayer;
 static TextLayer *degreeLayer;
+static TextLayer *optionLayer;
 
 const char* time_format = "%H:%M:%S";
 
@@ -29,6 +31,8 @@ struct tm* sunset_local;
 
 int weather_update_interval = 15;
 int weather_update_interval_counter;
+
+ClaySettings settings;
 
 enum WeatherKey {
   WEATHER_ICON_KEY = 0x0,
@@ -133,12 +137,14 @@ static void app_inbox_received_handler(DictionaryIterator *iter, void *context) 
   Tuple *bg_color_tuple = dict_find(iter, MESSAGE_KEY_BACKGROUND_COLOR);
   if(bg_color_tuple) {
     GColor bg_color = GColorFromHEX(bg_color_tuple->value->int32);
+    settings.backgroundColor = bg_color;
     layers_set_background_color(bg_color);
   }
   
   Tuple *clock_color_tuple = dict_find(iter, MESSAGE_KEY_CLOCK_COLOR);
   if(clock_color_tuple) {
     GColor clock_color = GColorFromHEX(clock_color_tuple->value->int32);
+    settings.clockColor = clock_color;
     text_layer_set_text_color(timeLayer, clock_color);
   }
   
@@ -146,6 +152,7 @@ static void app_inbox_received_handler(DictionaryIterator *iter, void *context) 
   Tuple *weather_interval_tuple = dict_find(iter, MESSAGE_KEY_WEATHER_INTERVAL);
   if (weather_interval_tuple) {
     weather_update_interval = weather_interval_tuple->value->uint32;
+    settings.weatherUpdateInterval = weather_update_interval;
     request_weather();
   }
   // ------------------------WEATHER------------------------ //
@@ -195,6 +202,7 @@ static void app_inbox_received_handler(DictionaryIterator *iter, void *context) 
   */
   // Read Weather preference
 
+  save_settings();
 }
 
 /* 
@@ -216,12 +224,8 @@ GRect getCoordsByAngle(int angle, int w, int h, int circle_offset) {
  * Post: returns 1 if the sun is out, 0 otherwise
  */
 short isDaylight(struct tm *tick_time) {
-  // If hour hour between hours of sunrise and sunset
-  APP_LOG(APP_LOG_LEVEL_DEBUG, "Current time: %i:%i", tick_time->tm_hour, tick_time->tm_min);
-  APP_LOG(APP_LOG_LEVEL_DEBUG, "Sunrise time: %i:%i", sunrise_local->tm_hour, sunrise_local->tm_min);
-  APP_LOG(APP_LOG_LEVEL_DEBUG, "Sunset time: %i:%i", sunset_local->tm_hour, sunset_local->tm_min);
-  
-	if (tick_time->tm_hour >= sunrise_local->tm_hour && tick_time->tm_hour <= sunset_local->tm_hour) {
+  // If  hour between hours of sunrise and sunset
+  if (tick_time->tm_hour >= sunrise_local->tm_hour && tick_time->tm_hour <= sunset_local->tm_hour) {
     if (tick_time->tm_hour == sunrise_local->tm_hour && tick_time->tm_min >= sunrise_local->tm_min) {
       // If hour is same but minute is greater than sunrise
       return true;
@@ -291,8 +295,7 @@ static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
  * Post: Initialize all assets
  */
 static void main_window_load(Window *window) {
-  GColor backgroundColor = GColorBlack;
-  window_set_background_color(window, backgroundColor);
+  
   
   //Get parent layer
   Layer *window_layer = window_get_root_layer(window);
@@ -303,31 +306,30 @@ static void main_window_load(Window *window) {
   timeOfDayLayer = bitmap_layer_create(GRect(80, 10, 21, 21));
   bitmap_layer_set_compositing_mode(timeOfDayLayer, GCompOpSet);
   bitmap_layer_set_bitmap(timeOfDayLayer, BITMAP_WEATHER_SUN);
-  
-  layer_add_child(window_layer, bitmap_layer_get_layer(timeOfDayLayer));
-  
+
   
   weatherBitmap = gbitmap_create_with_resource(RESOURCE_ID_WEATHER_CLOUDY);
   weatherLayer = bitmap_layer_create(GRect(80, 20, 21, 21));
   bitmap_layer_set_compositing_mode(weatherLayer, GCompOpSet);
   bitmap_layer_set_bitmap(weatherLayer, weatherBitmap);
   
-  layer_add_child(window_layer, bitmap_layer_get_layer(weatherLayer));
-  
   timeLayer = text_layer_create(GRect(60, 70, 60, 20));
   text_layer_set_text(timeLayer, "9999");
-  text_layer_set_background_color(timeLayer, backgroundColor);
-  text_layer_set_text_color(timeLayer, GColorElectricBlue);
+  //text_layer_set_background_color(timeLayer, backgroundColor);
+  text_layer_set_text_color(timeLayer, settings.clockColor);
   text_layer_set_text_alignment(timeLayer, GTextAlignmentCenter);
   text_layer_set_font(timeLayer, fonts_get_system_font(FONT_KEY_LECO_20_BOLD_NUMBERS));
   
   degreeLayer = text_layer_create(GRect(66, 90, 55, 20));
-  text_layer_set_text(degreeLayer, "HOT");
-  text_layer_set_background_color(degreeLayer, backgroundColor);
+  text_layer_set_text(degreeLayer, "---");
+  //text_layer_set_background_color(degreeLayer, backgroundColor);
   text_layer_set_text_color(degreeLayer, GColorWhite);
   text_layer_set_text_alignment(degreeLayer, GTextAlignmentCenter);
   text_layer_set_font(degreeLayer, fonts_get_system_font(FONT_KEY_LECO_20_BOLD_NUMBERS));
   
+  layers_set_background_color(settings.backgroundColor);  
+  layer_add_child(window_layer, bitmap_layer_get_layer(timeOfDayLayer));
+  layer_add_child(window_layer, bitmap_layer_get_layer(weatherLayer));
   layer_add_child(window_layer, text_layer_get_layer(timeLayer));
   layer_add_child(window_layer, text_layer_get_layer(degreeLayer));
   
@@ -341,19 +343,14 @@ static void main_window_load(Window *window) {
   sunset_local->tm_min = 0;
   sunset_local->tm_sec = 0;
   
-  Tuplet initial_values[] = {
-    TupletInteger(WEATHER_ICON_KEY, (uint8_t) 0),
-    TupletCString(WEATHER_TEMPERATURE_KEY, "---\u00B0"),
-    //TupletCString(WEATHER_CITY_KEY, "St Pebblesburg"),
-    TupletCString(WEATHER_SUNRISE_KEY, "08:00:00"),
-    TupletCString(WEATHER_SUNSET_KEY, "20:00:00")
-  };
-  
-  //Register message inbox handler
+  // Register message inbox handler
   app_message_register_inbox_received(app_inbox_received_handler);
-  //TODO: Appropriate message size
+  // TODO: Appropriate message size
   app_message_open(app_message_inbox_size_maximum(), app_message_outbox_size_maximum());
-  
+
+  // Create buffer struct with variables
+  // Ref. https://github.com/danksalot/YeomanPebbleWatchFace/blob/master/src/Settings.c
+  // persist_read_data(const uint32_t key, void *buffer, const size_t buffer_size);
   request_weather();
 }
 
@@ -383,6 +380,7 @@ static void main_window_unload(Window *window) {
  * Post: Initialize window, register window loader and unloader, subscribe to time service
  */
 static void init() {
+  settings = load_settings();
   
   // Create main Window element and assign to pointer
   s_main_window = window_create();
