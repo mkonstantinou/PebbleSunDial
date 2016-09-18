@@ -72,6 +72,30 @@ module.exports = [
     ]
   },
   {
+	"type":"heading",
+	"defaultValue":"Display Settings"
+  },
+  {
+	"type":"select",
+	"messageKey":"THIRD_LAYER_DISPLAY",
+	"defaultValue":0,
+	"label":"Third layer",
+	"options": [
+		{
+			"label": "None"
+			"value": 0
+		},
+		{
+			"label": "Date"
+			"value": 1
+		},
+		{
+			"label": "Location"
+			"value": 2
+		}
+	]
+  }
+  {
     "type": "submit",
     "defaultValue": "Save Settings"
   }

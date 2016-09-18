@@ -20,6 +20,7 @@
             "CLOCK_COLOR",
             "WEATHER_INTERVAL",
             "WEATHER_PROVIDER",
+			"THIRD_LAYER_DISPLAY",
             "SETTINGS_KEY"
         ],
         "projectType": "native",

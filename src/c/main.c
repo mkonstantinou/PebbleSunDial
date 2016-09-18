@@ -41,6 +41,12 @@ enum WeatherKey {
   WEATHER_SUNSET_KEY = 0x3
 };
 
+enum ThirdLayerKey {
+  NONE_KEY = 0,
+  DATE_KEY = 1,
+  LOCATION_KEY = 2
+};
+
 static const uint32_t WEATHER_ICONS[] = {
   RESOURCE_ID_WEATHER_THUNDER,
   RESOURCE_ID_WEATHER_RAIN,
