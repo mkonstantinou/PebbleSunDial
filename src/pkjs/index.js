@@ -40,8 +40,6 @@ function fetchWeather(lat, long) {
         var icon = iconFromWeatherId(response.weather[0].id);
         var sunrise = timeFromUnix(response.sys.sunrise);
         var sunset = timeFromUnix(response.sys.sunset);
-        console.log('JS Sunrise: ' + sunrise);
-        console.log('JS Sunset: ' + sunset);
         Pebble.sendAppMessage({
           'WEATHER_ICON_KEY': icon,
           'WEATHER_TEMPERATURE_KEY': temperature + "\u00B0",

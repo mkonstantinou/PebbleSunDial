@@ -7,6 +7,8 @@ typedef struct ClaySettings {
   short useLocalWeather;
   char* weatherProvider;
   int weatherUpdateInterval;
+  int optionLayer;
+  char* dateFormat;
 } __attribute__((__packed__)) ClaySettings;
 
 void default_settings();

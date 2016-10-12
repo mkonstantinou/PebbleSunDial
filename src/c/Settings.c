@@ -10,6 +10,8 @@ ClaySettings settings;
   settings.useLocalWeather = true;
   settings.weatherProvider = "openweathermap";
   settings.weatherUpdateInterval = 15;
+  settings.optionLayer = 0;
+  settings.dateFormat = "%d";
 }
 
 // Read settings from persistent storage

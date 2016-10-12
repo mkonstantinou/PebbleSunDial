@@ -41,10 +41,9 @@ enum WeatherKey {
   WEATHER_SUNSET_KEY = 0x3
 };
 
-enum ThirdLayerKey {
-  NONE_KEY = 0,
-  DATE_KEY = 1,
-  LOCATION_KEY = 2
+enum OptionLayerKey {
+  DATE_KEY = 0,
+  LOCATION_KEY = 1
 };
 
 static const uint32_t WEATHER_ICONS[] = {
@@ -128,6 +127,7 @@ static void layers_set_background_color(GColor color) {
   window_set_background_color(s_main_window, color);
   text_layer_set_background_color(timeLayer, color);
   text_layer_set_background_color(degreeLayer, color);
+  text_layer_set_background_color(optionLayer, color);
 }
 
 /* 
@@ -139,7 +139,7 @@ static void app_inbox_received_handler(DictionaryIterator *iter, void *context) 
   
   // ------------------------SETTINGS------------------------ //
   
-  // Read color preferences
+  // Background color settings
   Tuple *bg_color_tuple = dict_find(iter, MESSAGE_KEY_BACKGROUND_COLOR);
   if(bg_color_tuple) {
     GColor bg_color = GColorFromHEX(bg_color_tuple->value->int32);
@@ -147,6 +147,7 @@ static void app_inbox_received_handler(DictionaryIterator *iter, void *context) 
     layers_set_background_color(bg_color);
   }
   
+  // Clock color settings
   Tuple *clock_color_tuple = dict_find(iter, MESSAGE_KEY_CLOCK_COLOR);
   if(clock_color_tuple) {
     GColor clock_color = GColorFromHEX(clock_color_tuple->value->int32);
@@ -161,6 +162,25 @@ static void app_inbox_received_handler(DictionaryIterator *iter, void *context) 
     settings.weatherUpdateInterval = weather_update_interval;
     request_weather();
   }
+  
+  // Get option layer type
+  Tuple *option_layer_tuple = dict_find(iter, MESSAGE_KEY_OPTION_LAYER);
+  if (option_layer_tuple) {
+    uint32_t option = option_layer_tuple->value->uint32;
+    settings.optionLayer = option;
+  }
+  
+  // Get date format
+  Tuple *date_format_tuple = dict_find(iter, MESSAGE_KEY_DATE_FORMAT);
+  if (date_format_tuple) {
+    char* date_format = date_format_tuple->value->cstring;
+    APP_LOG(APP_LOG_LEVEL_DEBUG, "date format string: %s", date_format);
+    strcpy(settings.dateFormat, date_format);
+    APP_LOG(APP_LOG_LEVEL_DEBUG, "date setting: %s", settings.dateFormat);
+  }
+  
+  save_settings();
+  
   // ------------------------WEATHER------------------------ //
   
   // Read temperature
@@ -198,17 +218,6 @@ static void app_inbox_received_handler(DictionaryIterator *iter, void *context) 
     stringToTM(sun_string, sunset_local);
     memory_cache_flush((char*)sun_string, sizeof(sun_string));
   }
-  
-  // Read boolean preferences
-  /*
-  Tuple *second_tick_t = dict_find(iter, MESSAGE_KEY_SecondTick);
-  if(second_tick_t) {
-    bool second_ticks = second_tick_t->value->int32 == 1;
-  }
-  */
-  // Read Weather preference
-
-  save_settings();
 }
 
 /* 
@@ -253,6 +262,7 @@ short isDaylight(struct tm *tick_time) {
  * Post: Update weather, text, and rotating icons
  */
 static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
+          
   weather_update_interval_counter += 1;
   if (weather_update_interval_counter >= weather_update_interval) {
     request_weather();
@@ -260,6 +270,7 @@ static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
   }
   
   static char buffer[] = "99:99";
+  static char dateBuffer[] = "01/01";
   
   //Update sun/moon depending on time
   if ( isDaylight(tick_time)) {
@@ -271,7 +282,6 @@ static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
       bitmap_layer_set_bitmap(timeOfDayLayer, BITMAP_WEATHER_MOON);
     }
   }
-  
   
   //Get position of hour hand (sun/moon)
   int angle = TRIG_MAX_ANGLE * (((tick_time->tm_hour % 12) * 30 + tick_time->tm_min / 2)) / 360;
@@ -291,7 +301,15 @@ static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
     strftime(buffer, sizeof("99:99"), "%I:%M", tick_time);
   }
   
+  // Update time
   text_layer_set_text(timeLayer, buffer);
+  
+  // Update option layer
+  //if (settings.optionLayer == 0) {
+    strftime(dateBuffer, sizeof(dateBuffer), settings.dateFormat, tick_time);
+    APP_LOG(APP_LOG_LEVEL_DEBUG, "Updating date - %s", settings.dateFormat);
+    text_layer_set_text(optionLayer, dateBuffer);
+  //}
   
 }
 
@@ -302,7 +320,6 @@ static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
  */
 static void main_window_load(Window *window) {
   
-  
   //Get parent layer
   Layer *window_layer = window_get_root_layer(window);
   
@@ -312,23 +329,29 @@ static void main_window_load(Window *window) {
   timeOfDayLayer = bitmap_layer_create(GRect(80, 10, 21, 21));
   bitmap_layer_set_compositing_mode(timeOfDayLayer, GCompOpSet);
   bitmap_layer_set_bitmap(timeOfDayLayer, BITMAP_WEATHER_SUN);
-
   
   weatherBitmap = gbitmap_create_with_resource(RESOURCE_ID_WEATHER_CLOUDY);
   weatherLayer = bitmap_layer_create(GRect(80, 20, 21, 21));
   bitmap_layer_set_compositing_mode(weatherLayer, GCompOpSet);
   bitmap_layer_set_bitmap(weatherLayer, weatherBitmap);
   
-  timeLayer = text_layer_create(GRect(60, 70, 60, 20));
+  // Top Layer
+  optionLayer = text_layer_create(GRect(55, 60, 70, 20));
+  text_layer_set_text(optionLayer, "01/01");
+  text_layer_set_text_color(optionLayer, GColorWhite);
+  text_layer_set_text_alignment(optionLayer, GTextAlignmentCenter);
+  text_layer_set_font(optionLayer, fonts_get_system_font(FONT_KEY_LECO_20_BOLD_NUMBERS));
+  
+  // Middle Layer
+  timeLayer = text_layer_create(GRect(60, 80, 60, 20));
   text_layer_set_text(timeLayer, "9999");
-  //text_layer_set_background_color(timeLayer, backgroundColor);
   text_layer_set_text_color(timeLayer, settings.clockColor);
   text_layer_set_text_alignment(timeLayer, GTextAlignmentCenter);
   text_layer_set_font(timeLayer, fonts_get_system_font(FONT_KEY_LECO_20_BOLD_NUMBERS));
   
-  degreeLayer = text_layer_create(GRect(66, 90, 55, 20));
-  text_layer_set_text(degreeLayer, "---");
-  //text_layer_set_background_color(degreeLayer, backgroundColor);
+  // Bottom Layer
+  degreeLayer = text_layer_create(GRect(66, 100, 55, 20));
+  text_layer_set_text(degreeLayer, "");
   text_layer_set_text_color(degreeLayer, GColorWhite);
   text_layer_set_text_alignment(degreeLayer, GTextAlignmentCenter);
   text_layer_set_font(degreeLayer, fonts_get_system_font(FONT_KEY_LECO_20_BOLD_NUMBERS));
@@ -336,6 +359,7 @@ static void main_window_load(Window *window) {
   layers_set_background_color(settings.backgroundColor);  
   layer_add_child(window_layer, bitmap_layer_get_layer(timeOfDayLayer));
   layer_add_child(window_layer, bitmap_layer_get_layer(weatherLayer));
+  layer_add_child(window_layer, text_layer_get_layer(optionLayer));
   layer_add_child(window_layer, text_layer_get_layer(timeLayer));
   layer_add_child(window_layer, text_layer_get_layer(degreeLayer));
   
@@ -354,9 +378,7 @@ static void main_window_load(Window *window) {
   // TODO: Appropriate message size
   app_message_open(app_message_inbox_size_maximum(), app_message_outbox_size_maximum());
 
-  // Create buffer struct with variables
-  // Ref. https://github.com/danksalot/YeomanPebbleWatchFace/blob/master/src/Settings.c
-  // persist_read_data(const uint32_t key, void *buffer, const size_t buffer_size);
+  load_settings();
   request_weather();
 }
 

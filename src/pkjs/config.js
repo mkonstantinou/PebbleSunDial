@@ -24,7 +24,7 @@ module.exports = [
         "type": "color",
         "messageKey": "CLOCK_COLOR",
         "defaultValue": "0x55FFFF",
-        "label": "Background Color"
+        "label": "Clock Color"
       }
     ]
   },
@@ -72,29 +72,45 @@ module.exports = [
     ]
   },
   {
-	"type":"heading",
-	"defaultValue":"Display Settings"
+  	"type":"heading",
+  	"defaultValue":"Display Settings"
+    },
+    {
+  	"type":"select",
+  	"messageKey":"OPTION_LAYER",
+  	"defaultValue": 0,
+  	"label":"First layer",
+  	"options": [
+  		{
+  			"label": "Date",
+  			"value": 0
+  		},
+  		{
+  			"label": "Location",
+  			"value": 1
+  		}
+  	]
   },
   {
-	"type":"select",
-	"messageKey":"THIRD_LAYER_DISPLAY",
-	"defaultValue":0,
-	"label":"Third layer",
-	"options": [
-		{
-			"label": "None"
-			"value": 0
-		},
-		{
-			"label": "Date"
-			"value": 1
-		},
-		{
-			"label": "Location"
-			"value": 2
-		}
-	]
-  }
+    "type":"select",
+  	"messageKey":"DATE_FORMAT",
+  	"defaultValue": "%m/%d",
+  	"label":"Date format",
+  	"options": [
+      {
+  			"label": "dd",
+  			"value": "%d"
+  		},
+      {
+  			"label": "mm/dd",
+  			"value": "%m/%d"
+  		},
+  		{
+  			"label": "dd/mm",
+        "value": "%d/%m"
+  		}
+    ]
+  },
   {
     "type": "submit",
     "defaultValue": "Save Settings"

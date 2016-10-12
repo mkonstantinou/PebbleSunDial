@@ -20,15 +20,23 @@
             "CLOCK_COLOR",
             "WEATHER_INTERVAL",
             "WEATHER_PROVIDER",
-			"THIRD_LAYER_DISPLAY",
-            "SETTINGS_KEY"
+            "OPTION_LAYER",
+            "SETTINGS_KEY",
+            "DATE_FORMAT"
         ],
         "projectType": "native",
         "resources": {
             "media": [
                 {
-                    "file": "images/clear.png",
-                    "name": "WEATHER_CLEAR",
+                    "file": "images/thunder",
+                    "name": "WEATHER_THUNDER",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                },
+                {
+                    "file": "images/sun.png",
+                    "memoryFormat": "8Bit",
+                    "name": "WEATHER_SUN",
                     "targetPlatforms": null,
                     "type": "bitmap"
                 },
@@ -39,21 +47,8 @@
                     "type": "bitmap"
                 },
                 {
-                    "file": "images/thunder",
-                    "name": "WEATHER_THUNDER",
-                    "targetPlatforms": null,
-                    "type": "bitmap"
-                },
-                {
                     "file": "images/rain.png",
                     "name": "WEATHER_RAIN",
-                    "targetPlatforms": null,
-                    "type": "bitmap"
-                },
-                {
-                    "file": "images/sun.png",
-                    "memoryFormat": "8Bit",
-                    "name": "WEATHER_SUN",
                     "targetPlatforms": null,
                     "type": "bitmap"
                 },
@@ -66,6 +61,12 @@
                 {
                     "file": "images/cloudy.png",
                     "name": "WEATHER_CLOUDY",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                },
+                {
+                    "file": "images/clear.png",
+                    "name": "WEATHER_CLEAR",
                     "targetPlatforms": null,
                     "type": "bitmap"
                 }
