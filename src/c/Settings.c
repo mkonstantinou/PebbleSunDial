@@ -6,11 +6,10 @@ ClaySettings settings;
 //Clay settings
  void default_settings() {
   settings.backgroundColor = GColorBlack;
+  settings.dateColor = GColorWhite;
   settings.clockColor = GColorElectricBlue;
-  settings.useLocalWeather = true;
-  settings.weatherProvider = "openweathermap";
+  settings.tempColor = GColorWhite;
   settings.weatherUpdateInterval = 15;
-  settings.optionLayer = 0;
   settings.dateFormat = "%d";
 }
 

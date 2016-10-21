@@ -9,19 +9,19 @@
         "capabilities": [
             "configurable"
         ],
-        "displayName": "sundial",
+        "displayName": "Sundial",
         "enableMultiJS": true,
         "messageKeys": [
+            "SETTINGS_KEY",
             "WEATHER_ICON_KEY",
             "WEATHER_TEMPERATURE_KEY",
             "WEATHER_SUNRISE_KEY",
             "WEATHER_SUNSET_KEY",
             "BACKGROUND_COLOR",
+            "DATE_COLOR",
             "CLOCK_COLOR",
+            "TEMP_COLOR",
             "WEATHER_INTERVAL",
-            "WEATHER_PROVIDER",
-            "OPTION_LAYER",
-            "SETTINGS_KEY",
             "DATE_FORMAT"
         ],
         "projectType": "native",

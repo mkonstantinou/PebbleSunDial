@@ -304,13 +304,9 @@ static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
   // Update time
   text_layer_set_text(timeLayer, buffer);
   
-  // Update option layer
-  //if (settings.optionLayer == 0) {
-    strftime(dateBuffer, sizeof(dateBuffer), settings.dateFormat, tick_time);
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "Updating date - %s", settings.dateFormat);
-    text_layer_set_text(optionLayer, dateBuffer);
-  //}
-  
+  strftime(dateBuffer, sizeof(settings.dateFormat), settings.dateFormat, tick_time);
+  APP_LOG(APP_LOG_LEVEL_DEBUG, "Updating date - %s", settings.dateFormat);
+  text_layer_set_text(optionLayer, dateBuffer);
 }
 
 /* 
@@ -338,7 +334,7 @@ static void main_window_load(Window *window) {
   // Top Layer
   optionLayer = text_layer_create(GRect(55, 60, 70, 20));
   text_layer_set_text(optionLayer, "01/01");
-  text_layer_set_text_color(optionLayer, GColorWhite);
+  text_layer_set_text_color(optionLayer, settings.dateColor);
   text_layer_set_text_alignment(optionLayer, GTextAlignmentCenter);
   text_layer_set_font(optionLayer, fonts_get_system_font(FONT_KEY_LECO_20_BOLD_NUMBERS));
   
@@ -352,7 +348,7 @@ static void main_window_load(Window *window) {
   // Bottom Layer
   degreeLayer = text_layer_create(GRect(66, 100, 55, 20));
   text_layer_set_text(degreeLayer, "");
-  text_layer_set_text_color(degreeLayer, GColorWhite);
+  text_layer_set_text_color(degreeLayer, settings.tempColor );
   text_layer_set_text_alignment(degreeLayer, GTextAlignmentCenter);
   text_layer_set_font(degreeLayer, fonts_get_system_font(FONT_KEY_LECO_20_BOLD_NUMBERS));
   

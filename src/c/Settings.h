@@ -3,11 +3,10 @@
 
 typedef struct ClaySettings {
   GColor backgroundColor;
+  GColor dateColor;
   GColor clockColor;
-  short useLocalWeather;
-  char* weatherProvider;
+  GColor tempColor;
   int weatherUpdateInterval;
-  int optionLayer;
   char* dateFormat;
 } __attribute__((__packed__)) ClaySettings;
 

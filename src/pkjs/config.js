@@ -22,9 +22,21 @@ module.exports = [
       },
       {
         "type": "color",
+        "messageKey": "DATE_COLOR",
+        "defaultValue": "0xFFFFFF",
+        "label": "Date Color"
+      },
+      {
+        "type": "color",
         "messageKey": "CLOCK_COLOR",
         "defaultValue": "0x55FFFF",
         "label": "Clock Color"
+      },
+      {
+        "type": "color",
+        "messageKey": "TEMP_COLOR",
+        "defaultValue": "0xFFFFFF",
+        "label": "Temperature Color"
       }
     ]
   },
@@ -33,25 +45,10 @@ module.exports = [
     "defaultValue": "Weather Settings"
   },
   {
-    "type": "radiogroup",
-    "messageKey": "WEATHER_PROVIDER",
-    "label": "Weather Provider",
-    "options": [
-      { 
-        "label": "OpenWeatherMap", 
-        "value": 0 
-      },
-      { 
-        "label": "Yahoo Weather", 
-        "value": 1 
-      }
-    ] 
-  },
-  {
     "type": "select",
     "messageKey": "WEATHER_INTERVAL",
     "defaultValue": 15,
-    "label": "Weather Update Interval",
+    "label": "Update Interval",
     "options": [
       { 
         "label": "5 minutes",
@@ -73,23 +70,7 @@ module.exports = [
   },
   {
   	"type":"heading",
-  	"defaultValue":"Display Settings"
-    },
-    {
-  	"type":"select",
-  	"messageKey":"OPTION_LAYER",
-  	"defaultValue": 0,
-  	"label":"First layer",
-  	"options": [
-  		{
-  			"label": "Date",
-  			"value": 0
-  		},
-  		{
-  			"label": "Location",
-  			"value": 1
-  		}
-  	]
+  	"defaultValue":"Date Settings"
   },
   {
     "type":"select",

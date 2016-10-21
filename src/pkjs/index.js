@@ -90,6 +90,7 @@ Pebble.addEventListener('appmessage', function (e) {
   console.log(e.type);
   console.log(e.payload.temperature);
   console.log('message!');
+  // }
 });
 
 Pebble.addEventListener('webviewclosed', function (e) {
