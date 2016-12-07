@@ -25,6 +25,7 @@ static TextLayer *degreeLayer;
 static TextLayer *optionLayer;
 
 const char* time_format = "%H:%M:%S";
+static struct tm current_time;
 
 struct tm* sunrise_local;
 struct tm* sunset_local;
@@ -163,20 +164,16 @@ static void app_inbox_received_handler(DictionaryIterator *iter, void *context) 
     request_weather();
   }
   
-  // Get option layer type
-  Tuple *option_layer_tuple = dict_find(iter, MESSAGE_KEY_OPTION_LAYER);
-  if (option_layer_tuple) {
-    uint32_t option = option_layer_tuple->value->uint32;
-    settings.optionLayer = option;
-  }
-  
   // Get date format
   Tuple *date_format_tuple = dict_find(iter, MESSAGE_KEY_DATE_FORMAT);
   if (date_format_tuple) {
+    char* dateBuffer = "      ";
     char* date_format = date_format_tuple->value->cstring;
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "date format string: %s", date_format);
     strcpy(settings.dateFormat, date_format);
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "date setting: %s", settings.dateFormat);
+    strftime(dateBuffer, 6, settings.dateFormat, &current_time);
+    APP_LOG(APP_LOG_LEVEL_DEBUG, "settings date format string: %s", date_format);
+    APP_LOG(APP_LOG_LEVEL_DEBUG, "settings date  string: %s", dateBuffer);
+    text_layer_set_text(optionLayer, dateBuffer);
   }
   
   save_settings();
@@ -262,7 +259,8 @@ short isDaylight(struct tm *tick_time) {
  * Post: Update weather, text, and rotating icons
  */
 static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
-          
+  current_time = *tick_time;
+  
   weather_update_interval_counter += 1;
   if (weather_update_interval_counter >= weather_update_interval) {
     request_weather();
@@ -270,7 +268,7 @@ static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
   }
   
   static char buffer[] = "99:99";
-  static char dateBuffer[] = "01/01";
+  static char dateBuffer[] = "      ";
   
   //Update sun/moon depending on time
   if ( isDaylight(tick_time)) {
@@ -304,8 +302,10 @@ static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
   // Update time
   text_layer_set_text(timeLayer, buffer);
   
-  strftime(dateBuffer, sizeof(settings.dateFormat), settings.dateFormat, tick_time);
-  APP_LOG(APP_LOG_LEVEL_DEBUG, "Updating date - %s", settings.dateFormat);
+  // Update Date
+  strftime(dateBuffer, 6, settings.dateFormat, tick_time);
+  APP_LOG(APP_LOG_LEVEL_DEBUG, "date format: %s", settings.dateFormat);
+  APP_LOG(APP_LOG_LEVEL_DEBUG, "date string: %s", dateBuffer);
   text_layer_set_text(optionLayer, dateBuffer);
 }
 
@@ -333,7 +333,7 @@ static void main_window_load(Window *window) {
   
   // Top Layer
   optionLayer = text_layer_create(GRect(55, 60, 70, 20));
-  text_layer_set_text(optionLayer, "01/01");
+  text_layer_set_text(optionLayer, "");
   text_layer_set_text_color(optionLayer, settings.dateColor);
   text_layer_set_text_alignment(optionLayer, GTextAlignmentCenter);
   text_layer_set_font(optionLayer, fonts_get_system_font(FONT_KEY_LECO_20_BOLD_NUMBERS));
@@ -369,12 +369,13 @@ static void main_window_load(Window *window) {
   sunset_local->tm_min = 0;
   sunset_local->tm_sec = 0;
   
+  settings = load_settings();
+  
   // Register message inbox handler
   app_message_register_inbox_received(app_inbox_received_handler);
   // TODO: Appropriate message size
   app_message_open(app_message_inbox_size_maximum(), app_message_outbox_size_maximum());
-
-  load_settings();
+  
   request_weather();
 }
 

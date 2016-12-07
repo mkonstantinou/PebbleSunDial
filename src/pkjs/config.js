@@ -75,7 +75,7 @@ module.exports = [
   {
     "type":"select",
   	"messageKey":"DATE_FORMAT",
-  	"defaultValue": "%m/%d",
+  	"defaultValue":  "%m/%d",
   	"label":"Date format",
   	"options": [
       {
@@ -88,7 +88,7 @@ module.exports = [
   		},
   		{
   			"label": "dd/mm",
-        "value": "%d/%m"
+        "value": "%d-%m"
   		}
     ]
   },

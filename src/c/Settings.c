@@ -10,7 +10,8 @@ ClaySettings settings;
   settings.clockColor = GColorElectricBlue;
   settings.tempColor = GColorWhite;
   settings.weatherUpdateInterval = 15;
-  settings.dateFormat = "%d";
+  settings.dateFormat = (char*)malloc(6 * sizeof(char));
+  settings.dateFormat = "%m/%d";
 }
 
 // Read settings from persistent storage
