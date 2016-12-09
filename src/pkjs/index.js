@@ -30,16 +30,13 @@ function timeFromUnix(unixtime) {
 
 function fetchWeather(lat, long) {
 	var req = new XMLHttpRequest();
-	var weatherreq = 'http://api.openweathermap.org/data/2.5/weather?' + 
-		'lat=' + lat + '&lon=' + long + '&cnt=1&appid=' + owmApiKey + '&units=imperial';
-  console.log(weatherreq);
+	
 	req.open('GET', 'http://api.openweathermap.org/data/2.5/weather?' + 
 		'lat=' + lat + '&lon=' + long + '&cnt=1&appid=' + owmApiKey + '&units=imperial', true);
 		
 	req.onload = function() {
 		if (req.readyState === 4) {
 			if (req.status === 200) {
-			  console.log(req.responseText);
         var response = JSON.parse(req.responseText);
         var temperature = Math.round(response.main.temp);
         var icon = iconFromWeatherId(response.weather[0].id);
@@ -51,12 +48,12 @@ function fetchWeather(lat, long) {
           'WEATHER_SUNRISE_KEY': sunrise,
           'WEATHER_SUNSET_KEY': sunset
         }, function(e) {
-          console.log('Send successful!');
+          
         }, function(e) {
-          console.log('Send FAILED');
+          
         });
 			} else {
-        console.log('Error: ' + JSON.stringify(req));
+        
       }
 		}
 	};
@@ -64,13 +61,13 @@ function fetchWeather(lat, long) {
 }
 
 function locationSuccess(pos) {
-  console.log("location success");
+  //console.log("location success");
   var coordinates = pos.coords;
   fetchWeather(coordinates.latitude, coordinates.longitude);
 }
 
 function locationError(err) {
-  console.warn('location error (' + err.code + '): ' + err.message);
+  //console.warn('location error (' + err.code + '): ' + err.message);
   Pebble.sendAppMessage({
     'WEATHER_CITY_KEY': 'Loc Unavailable',
     'WEATHER_TEMPERATURE_KEY': 'N/A'

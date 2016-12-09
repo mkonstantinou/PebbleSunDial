@@ -148,12 +148,28 @@ static void app_inbox_received_handler(DictionaryIterator *iter, void *context) 
     layers_set_background_color(bg_color);
   }
   
+  // Date color settings
+  Tuple *date_color_tuple = dict_find(iter, MESSAGE_KEY_DATE_COLOR);
+  if(date_color_tuple) {
+    GColor date_color = GColorFromHEX(date_color_tuple->value->int32);
+    settings.dateColor = date_color;
+    text_layer_set_text_color(optionLayer, date_color);
+  }
+  
   // Clock color settings
   Tuple *clock_color_tuple = dict_find(iter, MESSAGE_KEY_CLOCK_COLOR);
   if(clock_color_tuple) {
     GColor clock_color = GColorFromHEX(clock_color_tuple->value->int32);
     settings.clockColor = clock_color;
     text_layer_set_text_color(timeLayer, clock_color);
+  }
+  
+  // Clock color settings
+  Tuple *temp_color_tuple = dict_find(iter, MESSAGE_KEY_TEMP_COLOR);
+  if(clock_color_tuple) {
+    GColor temp_color = GColorFromHEX(temp_color_tuple->value->int32);
+    settings.tempColor = temp_color;
+    text_layer_set_text_color(degreeLayer, temp_color);
   }
   
   // Weather update preferences
@@ -171,8 +187,6 @@ static void app_inbox_received_handler(DictionaryIterator *iter, void *context) 
     char* date_format = date_format_tuple->value->cstring;
     strcpy(settings.dateFormat, date_format);
     strftime(dateBuffer, 6, settings.dateFormat, &current_time);
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "settings date format string: %s", date_format);
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "settings date  string: %s", dateBuffer);
     text_layer_set_text(optionLayer, dateBuffer);
   }
   
@@ -303,9 +317,8 @@ static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
   text_layer_set_text(timeLayer, buffer);
   
   // Update Date
+  if (settings.dateFormat == NULL) settings.dateFormat = "%d";
   strftime(dateBuffer, 6, settings.dateFormat, tick_time);
-  APP_LOG(APP_LOG_LEVEL_DEBUG, "date format: %s", settings.dateFormat);
-  APP_LOG(APP_LOG_LEVEL_DEBUG, "date string: %s", dateBuffer);
   text_layer_set_text(optionLayer, dateBuffer);
 }
 
@@ -374,7 +387,7 @@ static void main_window_load(Window *window) {
   // Register message inbox handler
   app_message_register_inbox_received(app_inbox_received_handler);
   // TODO: Appropriate message size
-  app_message_open(app_message_inbox_size_maximum(), app_message_outbox_size_maximum());
+  app_message_open(APP_MESSAGE_INBOX_SIZE_MINIMUM, APP_MESSAGE_OUTBOX_SIZE_MINIMUM);
   
   request_weather();
 }

@@ -22,7 +22,7 @@
             "CLOCK_COLOR",
             "TEMP_COLOR",
             "WEATHER_INTERVAL",
-            "DATE_FORMAT"
+            "DATE_FORMAT[2]"
         ],
         "projectType": "native",
         "resources": {
